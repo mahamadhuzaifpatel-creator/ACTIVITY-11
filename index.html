@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CineStar Pass - Movie Ticket Booking (Supabase Powered)</title>
+  <meta name="description" content="Book movie tickets online with CineStar Pass. Integrated with Supabase database for real-time bookings and movie synchronization.">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Supabase JS Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand" id="brand-logo">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+          <line x1="7" y1="2" x2="7" y2="22"></line>
+          <line x1="17" y1="2" x2="17" y2="22"></line>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <line x1="2" y1="7" x2="7" y2="7"></line>
+          <line x1="2" y1="17" x2="7" y2="17"></line>
+          <line x1="17" y1="17" x2="22" y2="17"></line>
+          <line x1="17" y1="7" x2="22" y2="7"></line>
+        </svg>
+        <span class="brand-title">Cine<span class="highlight">Star</span></span>
+      </div>
+
+      <div class="location-picker">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
+        </svg>
+        <select id="city-select">
+          <option value="Mumbai">Mumbai</option>
+          <option value="Delhi NCR">Delhi NCR</option>
+          <option value="Bengaluru">Bengaluru</option>
+          <option value="Hyderabad">Hyderabad</option>
+          <option value="London">London</option>
+          <option value="New York">New York</option>
+        </select>
+      </div>
+
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="movie-search" placeholder="Search movies, genres, languages...">
+      </div>
+
+      <nav class="nav-links">
+        <button id="supabase-status-badge" class="status-badge local" title="Click to configure Supabase Connection">
+          ☁️ Supabase Setup
+        </button>
+        <button class="nav-link active" data-filter="all">Movies</button>
+        <button class="nav-link" id="btn-my-bookings">
+          My Bookings
+          <span class="badge" id="booking-count">0</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Spotlight Banner -->
+  <section class="hero-spotlight" id="hero-spotlight">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <div class="hero-badge">NOW IN IMAX 3D</div>
+      <h1 class="hero-title" id="hero-title">CYBERVERSE: 2099</h1>
+      <div class="hero-meta">
+        <span class="meta-tag rating">★ 4.9/5</span>
+        <span class="meta-tag">Sci-Fi / Action</span>
+        <span class="meta-tag">2h 45m</span>
+        <span class="meta-tag age">UA 13+</span>
+      </div>
+      <p class="hero-description" id="hero-desc">
+        In a futuristic dystopian metropolis, a rogue hacker uncovers a mind-bending cosmic simulation that holds the key to humanity's survival.
+      </p>
+      <div class="hero-actions">
+        <button class="btn btn-primary" id="hero-book-btn">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="7" y1="8" x2="7" y2="8.01"></line><line x1="17" y1="8" x2="17" y2="8.01"></line><line x1="7" y1="12" x2="7" y2="12.01"></line><line x1="17" y1="12" x2="17" y2="12.01"></line><line x1="7" y1="16" x2="7" y2="16.01"></line><line x1="17" y1="16" x2="17" y2="16.01"></line></svg>
+          Book Now
+        </button>
+        <button class="btn btn-secondary" id="btn-trailer">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Watch Trailer
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Container -->
+  <main class="main-content">
+    
+    <!-- Filter Bar -->
+    <div class="filter-section">
+      <div class="section-header">
+        <h2>Now Showing</h2>
+        <span class="subtitle">Explore movies screening near you</span>
+      </div>
+      <div class="genre-chips" id="genre-chips">
+        <button class="chip active" data-genre="all">All Genres</button>
+        <button class="chip" data-genre="Action">Action</button>
+        <button class="chip" data-genre="Sci-Fi">Sci-Fi</button>
+        <button class="chip" data-genre="Drama">Drama</button>
+        <button class="chip" data-genre="Animation">Animation</button>
+        <button class="chip" data-genre="Thriller">Thriller</button>
+        <button class="chip" data-genre="Comedy">Comedy</button>
+      </div>
+    </div>
+
+    <!-- Movie Catalog Grid -->
+    <div class="movies-grid" id="movies-grid">
+      <!-- Injected via JavaScript -->
+    </div>
+
+  </main>
+
+  <!-- Step 1: Showtime Selection Modal -->
+  <div class="modal-backdrop" id="showtime-modal">
+    <div class="modal-card">
+      <button class="modal-close" id="close-showtime-modal">&times;</button>
+      
+      <div class="modal-header">
+        <div class="modal-movie-info">
+          <img id="modal-movie-poster" src="" alt="Movie Poster" class="mini-poster">
+          <div>
+            <h3 id="modal-movie-title">Movie Title</h3>
+            <p id="modal-movie-sub" class="sub-text">Action • 2h 30m • UA</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Date Selection Tabs -->
+      <div class="date-selector" id="date-selector">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Cinema Theaters & Showtimes -->
+      <div class="theaters-list" id="theaters-list">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Seat Selection Modal -->
+  <div class="modal-backdrop" id="seat-modal">
+    <div class="modal-card large">
+      <div class="modal-header split">
+        <div>
+          <button class="btn-back" id="back-to-showtime">&larr; Change Showtime</button>
+          <h3 id="seat-movie-title">Movie Title</h3>
+          <p id="seat-showtime-info" class="sub-text">CineStar Grand IMAX | Today, 07:30 PM</p>
+        </div>
+        <button class="modal-close" id="close-seat-modal">&times;</button>
+      </div>
+
+      <!-- Seat Map Area -->
+      <div class="screen-container">
+        <div class="screen"></div>
+        <div class="screen-label">ALL EYES THIS WAY</div>
+      </div>
+
+      <!-- Seat Category Legend -->
+      <div class="seat-legend">
+        <div class="legend-item"><span class="seat-sample available"></span> Available</div>
+        <div class="legend-item"><span class="seat-sample selected"></span> Selected</div>
+        <div class="legend-item"><span class="seat-sample booked"></span> Sold Out</div>
+        <div class="legend-item"><span class="seat-sample vip"></span> VIP Recliner (₹400)</div>
+        <div class="legend-item"><span class="seat-sample premium"></span> Premium (₹300)</div>
+        <div class="legend-item"><span class="seat-sample standard"></span> Executive (₹200)</div>
+      </div>
+
+      <!-- Seats Grid Layout -->
+      <div class="seats-grid-wrapper">
+        <div class="seats-grid" id="seats-grid">
+          <!-- Injected dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- Bottom Checkout Bar -->
+      <div class="seat-summary-bar">
+        <div class="summary-details">
+          <div class="selected-seats-info">
+            <span class="label">Seats:</span>
+            <span id="selected-seats-text" class="value">None selected</span>
+          </div>
+          <div class="price-info">
+            <span class="label">Total Amount:</span>
+            <span id="total-price-text" class="price-value">₹0</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-proceed-snacks" disabled>
+          Continue to Snacks & Checkout &rarr;
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Step 3: Snacks & Checkout Modal -->
+  <div class="modal-backdrop" id="checkout-modal">
+    <div class="modal-card large">
+      <div class="modal-header split">
+        <div>
+          <button class="btn-back" id="back-to-seats">&larr; Back to Seats</button>
+          <h3>Add Snacks & Checkout</h3>
+          <p class="sub-text">Enhance your movie experience with delicious cinema bites</p>
+        </div>
+        <button class="modal-close" id="close-checkout-modal">&times;</button>
+      </div>
+
+      <div class="checkout-grid">
+        
+        <!-- Snacks Selector Section -->
+        <div class="snacks-section">
+          <h4>Combos & Beverages</h4>
+          <div class="snacks-list" id="snacks-list">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- Order Summary & Customer Details -->
+        <div class="order-summary-card">
+          <h4>Order Summary</h4>
+          
+          <div class="summary-box">
+            <div class="summary-line">
+              <span id="sum-movie-name">Movie Name</span>
+              <span id="sum-seats-count">0 Seats</span>
+            </div>
+            <div class="summary-sub" id="sum-theater-time">CineStar Luxe • Today 7:30 PM</div>
+            <div class="summary-sub" id="sum-seat-numbers">Seats: D4, D5</div>
+
+            <hr class="divider">
+
+            <div class="summary-line">
+              <span>Tickets Price</span>
+              <span id="sum-ticket-total">₹0</span>
+            </div>
+            <div class="summary-line" id="sum-snacks-row" style="display:none;">
+              <span>Food & Beverages</span>
+              <span id="sum-snacks-total">₹0</span>
+            </div>
+            <div class="summary-line">
+              <span>Convenience Fee & Tax (18%)</span>
+              <span id="sum-tax">₹0</span>
+            </div>
+
+            <hr class="divider">
+
+            <div class="summary-line total">
+              <span>Grand Total</span>
+              <span id="sum-grand-total" class="grand-price">₹0</span>
+            </div>
+          </div>
+
+          <!-- Customer Form -->
+          <form id="payment-form" class="customer-form" onsubmit="return false;">
+            <h4>Contact Details</h4>
+            <div class="form-group">
+              <input type="text" id="cust-name" placeholder="Full Name" required>
+            </div>
+            <div class="form-group">
+              <input type="email" id="cust-email" placeholder="Email Address" required>
+            </div>
+            <div class="form-group">
+              <input type="tel" id="cust-phone" placeholder="Mobile Number (10 digits)" pattern="[0-9]{10}" required>
+            </div>
+
+            <h4>Payment Method</h4>
+            <div class="payment-methods">
+              <label class="pay-option">
+                <input type="radio" name="pay-method" value="UPI" checked>
+                <span>UPI / GPay / PhonePe</span>
+              </label>
+              <label class="pay-option">
+                <input type="radio" name="pay-method" value="Card">
+                <span>Credit / Debit Card</span>
+              </label>
+              <label class="pay-option">
+                <input type="radio" name="pay-method" value="NetBanking">
+                <span>Net Banking</span>
+              </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary full-width" id="btn-pay-now">
+              Pay & Confirm Ticket
+            </button>
+          </form>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Step 4: Digital Ticket Receipt Modal -->
+  <div class="modal-backdrop" id="ticket-modal">
+    <div class="modal-card ticket-card-wrap">
+      <button class="modal-close" id="close-ticket-modal">&times;</button>
+      
+      <div class="ticket-header">
+        <div class="success-icon">✓</div>
+        <h2>Booking Confirmed!</h2>
+        <p>Your movie ticket has been synced to Supabase database.</p>
+      </div>
+
+      <!-- Printable Ticket Stub -->
+      <div class="digital-ticket" id="digital-ticket">
+        <div class="ticket-top">
+          <div class="ticket-brand">CineStar Cinemas</div>
+          <div class="ticket-id" id="t-booking-id">CS-89421-MOV</div>
+        </div>
+
+        <div class="ticket-body">
+          <div class="ticket-movie-title" id="t-movie-title">CYBERVERSE: 2099</div>
+          <div class="ticket-tags">
+            <span class="t-badge" id="t-format">IMAX 3D</span>
+            <span class="t-badge" id="t-lang">English</span>
+          </div>
+
+          <div class="ticket-grid">
+            <div class="t-col">
+              <span class="t-label">THEATER & SCREEN</span>
+              <span class="t-val" id="t-theater">CineStar Grand IMAX, Audi 03</span>
+            </div>
+            <div class="t-col">
+              <span class="t-label">DATE & TIME</span>
+              <span class="t-val" id="t-datetime">Today | 07:30 PM</span>
+            </div>
+            <div class="t-col">
+              <span class="t-label">SEATS</span>
+              <span class="t-val highlight-seat" id="t-seats">A4, A5</span>
+            </div>
+            <div class="t-col">
+              <span class="t-label">TOTAL PAID</span>
+              <span class="t-val" id="t-amount">₹826</span>
+            </div>
+          </div>
+
+          <div class="ticket-qr-area">
+            <div class="qr-box">
+              <svg id="ticket-qr-code" viewBox="0 0 100 100" width="90" height="90">
+                <!-- QR Code pattern injected via JS -->
+              </svg>
+            </div>
+            <div class="qr-text">
+              <span>Scan QR at Theater Entrance</span>
+              <small>Admit <span id="t-admit-count">2</span> Persons</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="ticket-perforated"></div>
+        <div class="ticket-footer">
+          <span>Holder: <strong id="t-cust-name">John Doe</strong></span>
+          <span>Payment: <strong id="t-pay-mode">UPI</strong></span>
+        </div>
+      </div>
+
+      <div class="ticket-actions">
+        <button class="btn btn-secondary" id="btn-print-ticket">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          Print / Save PDF
+        </button>
+        <button class="btn btn-primary" id="btn-done-ticket">
+          Close & Return Home
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Supabase Setup Modal -->
+  <div class="modal-backdrop" id="supabase-modal">
+    <div class="modal-card">
+      <button class="modal-close" id="close-supabase-modal">&times;</button>
+      <div class="modal-header">
+        <h3>⚡ Supabase Database Connection</h3>
+        <p class="sub-text">Connect your project to Supabase for real-time cloud database storage</p>
+      </div>
+
+      <form id="supabase-config-form" style="margin-top: 16px; display: flex; flex-direction: column; gap: 14px;" onsubmit="return false;">
+        <div class="form-group">
+          <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 6px;">Supabase Project URL</label>
+          <input type="url" id="sb-url-input" placeholder="https://xyzcompany.supabase.co" required>
+        </div>
+        <div class="form-group">
+          <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 6px;">Supabase Anon Key</label>
+          <input type="text" id="sb-key-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; font-size: 0.82rem; color: var(--text-muted);">
+          ℹ️ Need table schema? See the <strong style="color:var(--accent-cyan);">schema.sql</strong> file in your project directory to run in Supabase SQL Editor.
+        </div>
+
+        <button type="submit" class="btn btn-primary full-width" id="btn-save-supabase">
+          Save & Connect Supabase
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- My Bookings Drawer/Modal -->
+  <div class="modal-backdrop" id="my-bookings-modal">
+    <div class="modal-card">
+      <div class="modal-header split">
+        <h3>My Booked Tickets (Supabase Synced)</h3>
+        <button class="modal-close" id="close-my-bookings">&times;</button>
+      </div>
+
+      <div class="bookings-list" id="my-bookings-list">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Trailer Video Modal -->
+  <div class="modal-backdrop" id="trailer-modal">
+    <div class="modal-card trailer-card">
+      <button class="modal-close" id="close-trailer-modal">&times;</button>
+      <div class="video-container">
+        <iframe id="trailer-iframe" width="100%" height="400" src="" title="Movie Trailer" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>&copy; 2026 CineStar Pass Ticket Booking. Powered by Supabase Backend Database.</p>
+  </footer>
+
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
